@@ -27,6 +27,13 @@ x-shared: &shared
     - N8N_SECURE_COOKIE=true
     - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
     - N8N_DIAGNOSTICS_ENABLED=false
+    - WEBHOOK_URL=${WEBHOOK_URL}
+    - OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true
+    # [新增] 启用 External Runner 模式
+    - N8N_RUNNERS_ENABLED=true
+    - N8N_RUNNERS_MODE=external
+    - N8N_RUNNERS_BROKER_PORT=5679
+    - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
   volumes:
     - n8n_storage:/home/node/.n8n
   depends_on:
@@ -110,6 +117,25 @@ services:
       - n8n
     networks:
       - backend
+      - ingress
+  # [新增] Python Task Runner 服务
+  n8n-task-runners:
+    # image: docker.n8n.io/n8nio/runners:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      # 指定 Runner 类型为 python
+      - N8N_RUNNER_TYPE=python
+      # 连接到主 n8n 实例 (注意这里的 host 'n8n' 必须是你 docker-compose 里主服务的名字)
+      - N8N_RUNNERS_TASK_BROKER_URI=ws://n8n:5679
+      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
+    depends_on:
+      - n8n
+    networks:
+      - backend
+      - ingress
 
 networks:
   backend:
