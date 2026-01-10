@@ -1,0 +1,1 @@
+- [ ] n8n 入口防护：评估并启用额外的入口保护（例如 Cloudflare Access/SSO、反向代理层的 WAF、N8N_BASIC_AUTH 或 OIDC），确定方案后更新 docker-compose 与环境变量。***
