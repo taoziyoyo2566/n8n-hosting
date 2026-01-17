@@ -127,9 +127,10 @@ services:
     restart: always
     environment:
       # 指定 Runner 类型为 python
-      - N8N_RUNNER_TYPE=python
+      # - N8N_RUNNER_TYPE=python
       # 连接到主 n8n 实例 (注意这里的 host 'n8n' 必须是你 docker-compose 里主服务的名字)
-      - N8N_RUNNERS_TASK_BROKER_URI=ws://n8n:5679
+      # - N8N_RUNNERS_TASK_BROKER_URI=ws://n8n:5679
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
       - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
     depends_on:
       - n8n
