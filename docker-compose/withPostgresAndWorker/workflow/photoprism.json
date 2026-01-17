@@ -1,0 +1,119 @@
+{
+  "name": "PhotoPrism User Registration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "register",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        460,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 获取输入\nconst body = $input.body;\nconst username = body.username;\nconst password = body.password;\nconst name = body.name || username;\n\n// 1. 安全校验：用户名只能包含字母和数字\n// 这是为了防止 Shell 注入，比如用户名为 \"; rm -rf /\"\nconst usernameRegex = /^[a-zA-Z0-9]+$/;\nif (!usernameRegex.test(username)) {\n  throw new Error(\"Invalid username. Only alphanumeric characters allowed.\");\n}\n\n// 2. 密码长度校验\nif (!password || password.length < 6) {\n  throw new Error(\"Password must be at least 6 characters long.\");\n}\n\nreturn {\n  json: {\n    safeUsername: username,\n    safePassword: password,\n    safeName: name\n  }\n};"
+      },
+      "id": "validation-node",
+      "name": "Security Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=cd /home/kagoya/workspace/prism && docker compose exec -T photoprism photoprism users add -n \"{{ $json.safeName }}\" -p \"{{ $json.safePassword }}\" \"{{ $json.safeUsername }}\""
+      },
+      "id": "ssh-node",
+      "name": "Create User via SSH",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        900,
+        240
+      ],
+      "credentials": {
+        "ssh": {
+          "id": "YOUR_CREDENTIAL_ID_HERE", 
+          "name": "PhotoPrism VPS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"User {{ $('Security Check').item.json.safeUsername }} created successfully!\"\n}",
+        "options": {}
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "httpCode": 400,
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"message\": \"{{ $input.item.error.message }}\"\n}",
+        "options": {}
+      },
+      "id": "error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        900,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Security Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Security Check": {
+      "main": [
+        [
+          {
+            "node": "Create User via SSH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create User via SSH": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
