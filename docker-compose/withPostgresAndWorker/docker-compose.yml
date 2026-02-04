@@ -25,10 +25,20 @@ x-shared: &shared
     - N8N_ENCRYPTION_KEY=${ENCRYPTION_KEY}
     - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
     - N8N_SECURE_COOKIE=true
+    - N8N_PROXY_HOPS=1
     - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
     - N8N_DIAGNOSTICS_ENABLED=false
     - WEBHOOK_URL=${WEBHOOK_URL}
     - OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true
+    # 让 task broker 对同一网络可达
+    - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+    - N8N_EMAIL_MODE=${N8N_EMAIL_MODE}
+    - N8N_SMTP_HOST=${N8N_SMTP_HOST}
+    - N8N_SMTP_PORT=${N8N_SMTP_PORT}
+    - N8N_SMTP_USER=${N8N_SMTP_USER}
+    - N8N_SMTP_PASS=${N8N_SMTP_PASS}
+    - N8N_SMTP_SSL=${N8N_SMTP_SSL}
+    - N8N_SMTP_SENDER=${N8N_SMTP_SENDER}
     # [新增] 启用 External Runner 模式
     - N8N_RUNNERS_ENABLED=true
     - N8N_RUNNERS_MODE=external
@@ -130,7 +140,7 @@ services:
       # - N8N_RUNNER_TYPE=python
       # 连接到主 n8n 实例 (注意这里的 host 'n8n' 必须是你 docker-compose 里主服务的名字)
       # - N8N_RUNNERS_TASK_BROKER_URI=ws://n8n:5679
-      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n-worker:5679
       - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
     depends_on:
       - n8n

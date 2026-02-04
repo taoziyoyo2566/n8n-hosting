@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// 获取输入\nconst body = $input.body;\nconst username = body.username;\nconst password = body.password;\nconst name = body.name || username;\n\n// 1. 安全校验：用户名只能包含字母和数字\n// 这是为了防止 Shell 注入，比如用户名为 \"; rm -rf /\"\nconst usernameRegex = /^[a-zA-Z0-9]+$/;\nif (!usernameRegex.test(username)) {\n  throw new Error(\"Invalid username. Only alphanumeric characters allowed.\");\n}\n\n// 2. 密码长度校验\nif (!password || password.length < 6) {\n  throw new Error(\"Password must be at least 6 characters long.\");\n}\n\nreturn {\n  json: {\n    safeUsername: username,\n    safePassword: password,\n    safeName: name\n  }\n};"
+        "jsCode": "// 获取输入\nconst body = $input.body;\nconst username = body.username;\nconst password = body.password;\nconst name = body.name || username;\n\n// 1) 用户名：仅字母数字\nconst usernameRegex = /^[a-zA-Z0-9]+$/;\nif (!usernameRegex.test(username)) {\n  throw new Error(\"Invalid username. Only alphanumeric characters allowed.\");\n}\n\n// 2) 密码：8-64 长度，允许常见符号，禁止引号/反引号/空格，降低命令注入风险\nconst passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+=\\-.,:;?/]{8,64}$/;\nif (!passwordRegex.test(password)) {\n  throw new Error(\"Password must be 8-64 chars; allowed: letters, numbers, !@#$%^&*()_+=-.,:;?/\");\n}\n\n// 3) 显示名称：限制为常见安全字符\nconst nameRegex = /^[A-Za-z0-9 _.-]{1,64}$/;\nif (!nameRegex.test(name)) {\n  throw new Error(\"Name must be 1-64 chars; allowed letters, numbers, space, _ . -\");\n}\n\nreturn {\n  json: {\n    safeUsername: username,\n    safePassword: password,\n    safeName: name.trim()\n  }\n};"
       },
       "id": "validation-node",
       "name": "Security Check",
