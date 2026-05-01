@@ -24,13 +24,34 @@ print(secrets.token_urlsafe(48))
 PY
 }
 
-# Allow overriding via environment variables; otherwise generate.
+# --- 交互式/参数处理 ---
+
+# WEBHOOK_URL 处理
+WEBHOOK_URL_VALUE="${1:-${WEBHOOK_URL:-}}"
+if [[ -z "${WEBHOOK_URL_VALUE}" ]]; then
+  if [[ -t 0 ]]; then
+    read -r -p "Enter your WEBHOOK_URL (e.g., https://n8n.example.com/): " WEBHOOK_URL_VALUE
+  fi
+  if [[ -z "${WEBHOOK_URL_VALUE}" ]]; then
+    WEBHOOK_URL_VALUE="https://n8n.example.com/"
+    echo "Warning: No WEBHOOK_URL provided, using default: ${WEBHOOK_URL_VALUE}"
+  fi
+fi
+
+# 确保 URL 以 / 结尾
+[[ "${WEBHOOK_URL_VALUE}" != */ ]] && WEBHOOK_URL_VALUE="${WEBHOOK_URL_VALUE}/"
+
+# TIMEZONE 处理
+GENERIC_TIMEZONE_VALUE="${GENERIC_TIMEZONE:-$(cat /etc/timezone 2>/dev/null || echo "UTC")}"
+
+# --- 密钥生成 ---
 POSTGRES_PASSWORD_VALUE="${POSTGRES_PASSWORD:-$(gen_secret)}"
 POSTGRES_NON_ROOT_PASSWORD_VALUE="${POSTGRES_NON_ROOT_PASSWORD:-$(gen_secret)}"
 REDIS_PASSWORD_VALUE="${REDIS_PASSWORD:-$(gen_secret)}"
 ENCRYPTION_KEY_VALUE="${ENCRYPTION_KEY:-$(gen_encryption_key)}"
 N8N_RUNNERS_AUTH_TOKEN_VALUE="${N8N_RUNNERS_AUTH_TOKEN:-$(gen_secret)}"
-export POSTGRES_PASSWORD_VALUE POSTGRES_NON_ROOT_PASSWORD_VALUE REDIS_PASSWORD_VALUE ENCRYPTION_KEY_VALUE N8N_RUNNERS_AUTH_TOKEN_VALUE
+
+export POSTGRES_PASSWORD_VALUE POSTGRES_NON_ROOT_PASSWORD_VALUE REDIS_PASSWORD_VALUE ENCRYPTION_KEY_VALUE N8N_RUNNERS_AUTH_TOKEN_VALUE WEBHOOK_URL_VALUE GENERIC_TIMEZONE_VALUE
 
 if [[ -f "${ENV_PATH}" ]]; then
   if [[ "${OVERWRITE:-}" == "true" ]]; then
@@ -60,6 +81,8 @@ replacements = {
     "__REDIS_PASSWORD__": os.environ["REDIS_PASSWORD_VALUE"],
     "__ENCRYPTION_KEY__": os.environ["ENCRYPTION_KEY_VALUE"],
     "__N8N_RUNNERS_AUTH_TOKEN__": os.environ["N8N_RUNNERS_AUTH_TOKEN_VALUE"],
+    "__WEBHOOK_URL__": os.environ["WEBHOOK_URL_VALUE"],
+    "__GENERIC_TIMEZONE__": os.environ["GENERIC_TIMEZONE_VALUE"],
 }
 
 for placeholder, value in replacements.items():
@@ -70,13 +93,11 @@ with open(env_path, "w", encoding="utf-8") as fh:
 PY
 
 echo "Wrote ${ENV_PATH}"
-echo "Values used (store them securely):"
-printf 'POSTGRES_PASSWORD=%s\n' "${POSTGRES_PASSWORD_VALUE}"
-printf 'POSTGRES_NON_ROOT_PASSWORD=%s\n' "${POSTGRES_NON_ROOT_PASSWORD_VALUE}"
-printf 'REDIS_PASSWORD=%s\n' "${REDIS_PASSWORD_VALUE}"
-printf 'ENCRYPTION_KEY=%s\n' "${ENCRYPTION_KEY_VALUE}"
-printf 'N8N_RUNNERS_AUTH_TOKEN=%s\n' "${N8N_RUNNERS_AUTH_TOKEN_VALUE}"
-echo
+echo "------------------------------------------------"
+echo "Configuration Summary:"
+echo "  WEBHOOK_URL:      ${WEBHOOK_URL_VALUE}"
+echo "  TIMEZONE:         ${GENERIC_TIMEZONE_VALUE}"
+echo "------------------------------------------------"
 echo "Next steps:"
 echo "  1) Review ${ENV_PATH}"
 echo "  2) docker compose up -d"
