@@ -5,10 +5,8 @@ volumes:
 
 x-shared: &shared
   restart: always
-  image: docker.n8n.io/n8nio/n8n:${N8N_VERSION:-stable}
+  image: docker.n8n.io/n8nio/n8n:${N8N_VERSION:-2}
   user: "1000:1000"
-  security_opt:
-    - no-new-privileges:true
   environment:
     - NODE_ENV=production
     - DB_TYPE=postgresdb
@@ -25,15 +23,18 @@ x-shared: &shared
     - N8N_ENCRYPTION_KEY=${ENCRYPTION_KEY}
     - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
     - N8N_SECURE_COOKIE=true
+    - N8N_HEALTH_CHECK_ACTIVE=true
     - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
     - N8N_DIAGNOSTICS_ENABLED=false
     - WEBHOOK_URL=${WEBHOOK_URL}
     - OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true
     # External Runner Configuration
-    - N8N_RUNNERS_ENABLED=true
     - N8N_RUNNERS_MODE=external
+    - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
     - N8N_RUNNERS_BROKER_PORT=5679
     - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
+    # Performance & Stability
+    - NODE_OPTIONS=--max-old-space-size=4096
   volumes:
     - n8n_storage:/home/node/.n8n
   depends_on:
@@ -45,6 +46,12 @@ x-shared: &shared
       condition: service_completed_successfully
   networks:
     - backend
+  deploy:
+    resources:
+      limits:
+        memory: 4G
+      reservations:
+        memory: 512M
 
 services:
   postgres:
@@ -104,6 +111,12 @@ services:
 
   n8n:
     <<: *shared
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
       - backend
       - ingress
@@ -113,6 +126,12 @@ services:
   n8n-worker:
     <<: *shared
     command: worker
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     depends_on:
       - n8n
     networks:
@@ -123,10 +142,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        N8N_VERSION: ${N8N_VERSION:-2}
     restart: always
     environment:
-      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n-worker:5679
       - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
+    volumes:
+      - ./n8n-task-runners.json:/etc/n8n-task-runners.json:ro
     depends_on:
       - n8n
     networks:

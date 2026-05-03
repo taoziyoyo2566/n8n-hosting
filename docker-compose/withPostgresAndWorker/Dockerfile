@@ -4,7 +4,11 @@ RUN apk update && apk fetch apk-tools-static
 RUN tar -xzf apk-tools-static-*.apk
 
 # --- 第二阶段：组装 Runner ---
-FROM n8nio/runners:latest
+# N8N_VERSION must match the main n8n image (passed via build.args from compose).
+# Default '2' mirrors compose's ${N8N_VERSION:-2}: pin in .env when you
+# want a specific tag, otherwise track upstream major version 2.
+ARG N8N_VERSION=2
+FROM n8nio/runners:${N8N_VERSION}
 
 USER root
 
