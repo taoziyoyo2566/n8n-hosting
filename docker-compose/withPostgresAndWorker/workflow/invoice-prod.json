@@ -1,0 +1,114 @@
+{
+  "name": "Invoice-prod",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "01fa6ce3-9fe1-423a-9cd1-0f4e1c3428f8",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "265cc7d8-f7f3-42eb-a2a0-2f9c9fce14bc",
+      "name": "Receive WorkSheet and Invoice",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        160
+      ],
+      "webhookId": "01fa6ce3-9fe1-423a-9cd1-0f4e1c3428f8"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst body = item.json.body ?? {};\nconst worksheet = item.binary?.worksheet;\nconst pdf = item.binary?.invoice_pdf;\n\nif (!worksheet) {\n  throw new Error('Missing multipart file field: worksheet');\n}\nif (!pdf) {\n  throw new Error('Missing multipart file field: invoice_pdf');\n}\n\nconst worksheetName = worksheet.fileName ?? '';\nconst pdfName = pdf.fileName ?? '';\nif (!pdfName.toLowerCase().endsWith('.pdf')) {\n  throw new Error(`The invoice file must be a PDF: ${pdfName || '(unnamed)'}`);\n}\n\nconst match = worksheetName.match(/(?:^|[_-])(\\d{4})(0[1-9]|1[0-2])(?:\\d{2})?(?=\\.[^.]+$|[_-]|$)/);\nif (!match) {\n  throw new Error(`The WorkSheet filename must contain YYYYMM or YYYYMMDD after _ or -: ${worksheetName}`);\n}\n\nif (!body.client_email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(body.client_email)) {\n  throw new Error('A valid client_email form field is required');\n}\nfor (const [field, link] of Object.entries({ worksheet_link: body.worksheet_link, invoice_pdf_link: body.invoice_pdf_link })) {\n  if (!link || !/^https?:\\/\\//.test(link)) {\n    throw new Error(`A valid ${field} form field is required`);\n  }\n}\n\nreturn [{\n  json: {\n    ...item.json,\n    billing_month: Number(match[2]),\n    worksheet_name: worksheetName,\n    invoice_pdf_name: pdfName,\n  },\n  binary: item.binary,\n}];"
+      },
+      "id": "4a19bb8c-059c-43e6-8a84-9b7ae7097c80",
+      "name": "Validate Files and Extract Month",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "reap@taoziyoyo.com",
+        "toEmail": "= {{ $json.body.client_email }}",
+        "subject": "={{ $json.billing_month + '月分の月報・請求書' }}",
+        "html": "=王様\n<!--<p>{{ $json.body.client_company }} {{ $json.body.client_name }} 様</p>-->\n\n<p>お疲れ様です。</p>\n\n<p>{{ $json.billing_month }}月分の月報（WorkSheet）と請求書PDFを添付いたしますので、ご確認をお願いいたします。</p>\n\n<p>ご請求金額：¥{{ Number($json.body.total_amount).toLocaleString('ja-JP') }}</p>\n\n  <ul>\n    <li>\n      WorkSheet:\n      <a href=\"{{ $json.body.worksheet_link }}\">\n        {{ $json.worksheet_name }}\n      </a>\n    </li>\n    <li>\n      請求書PDF:\n      <a href=\"{{ $json.body.invoice_pdf_link }}\">\n        {{ $json.invoice_pdf_name }}\n      </a>\n    </li>\n  </ul>\n\n<p>引き続きよろしくお願いいたします。</p>",
+        "options": {
+          "appendAttribution": false,
+          "fileAttachments": "",
+          "ccEmail": "={{ $json.body.client_cc_email }}",
+          "bccEmail": "n8n@taoziyoyo.com"
+        }
+      },
+      "id": "dc9681e3-8fc6-42ed-8ee1-63a0a2c85238",
+      "name": "Send Invoice Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        160
+      ],
+      "webhookId": "11a1135e-163f-4e96-891c-91868f54327e",
+      "credentials": {
+        "smtp": {
+          "id": "7GXGMcOHij1fDLC3",
+          "name": "Taoziyoyo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'ok', invoice_id: $json.body.invoice_id, billing_month: $json.billing_month, worksheet_name: $json.worksheet_name, invoice_pdf_name: $json.invoice_pdf_name } }}",
+        "options": {}
+      },
+      "id": "d63a0256-a6fc-4867-8e6c-f2f36953bfec",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Receive WorkSheet and Invoice": {
+      "main": [
+        [
+          {
+            "node": "Validate Files and Extract Month",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Files and Extract Month": {
+      "main": [
+        [
+          {
+            "node": "Send Invoice Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Invoice Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
