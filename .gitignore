@@ -1,0 +1,7 @@
+# 本机秘密配置：任何目录下的 .env 及恢复流程生成的 .env 副本
+# （已跟踪的上游占位符 .env 不受影响，gitignore 不会取消跟踪）
+.env
+.env.bak.*
+
+# 迁移备份包：内含真实 .env 与 Postgres dump，禁止入库
+n8n_full_migration_*.tar.gz

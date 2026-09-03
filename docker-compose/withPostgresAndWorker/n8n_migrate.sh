@@ -84,6 +84,7 @@ do_backup() {
     # 5. 生成最终压缩包
     echo -e "${YELLOW}🗜️ 正在生成最终的全量迁移包...${NC}"
     tar -czf "${FINAL_BACKUP_NAME}" -C "${TMP_DIR}" .
+    chmod 600 "${FINAL_BACKUP_NAME}"
 
     # 6. 清理并重启老服务
     rm -rf "${TMP_DIR}"
@@ -96,6 +97,7 @@ do_backup() {
 
 do_restore() {
     BACKUP_FILE=$1
+    LOCAL_TIMEZONE=""
 
     if [ ! -f "$BACKUP_FILE" ]; then
         echo -e "${RED}❌ 错误: 找不到指定的备份文件 [${BACKUP_FILE}]！${NC}"
@@ -104,14 +106,34 @@ do_restore() {
 
     echo -e "${GREEN}🚀 开始执行 n8n 全量恢复流程 (V4)...${NC}"
 
+    if [ -f ".env" ]; then
+        LOCAL_TIMEZONE=$(sed -n 's/^GENERIC_TIMEZONE=//p' .env | tail -n 1)
+    fi
+
     TMP_DIR="/tmp/n8n_migration_restore"
     mkdir -p "${TMP_DIR}"
     tar -xzf "${BACKUP_FILE}" -C "${TMP_DIR}"
 
-    # 1. 恢复配置文件到当前目录
+    # 1. 恢复秘密配置；保留目标机器上已经过适配的 Compose 配置
     echo -e "${YELLOW}📄 正在恢复配置文件到当前目录...${NC}"
-    cp "${TMP_DIR}/docker-compose.yml" .
+    if [ ! -f "docker-compose.yml" ]; then
+        cp "${TMP_DIR}/docker-compose.yml" .
+    else
+        echo -e "${YELLOW}ℹ️ 保留当前 docker-compose.yml，不使用备份中的旧版本覆盖。${NC}"
+    fi
+    # 覆盖前先另存本机 .env：其中的 ENCRYPTION_KEY 一旦丢失，本机已有 credential 将永久无法解密
+    if [ -f ".env" ]; then
+        ENV_BACKUP=".env.bak.${DATE_STR}"
+        cp .env "${ENV_BACKUP}"
+        chmod 600 "${ENV_BACKUP}"
+        echo -e "${YELLOW}🔐 已将本机原有 .env 另存为 ${ENV_BACKUP}${NC}"
+    fi
     cp "${TMP_DIR}/.env" .
+    chmod 600 .env
+
+    if [[ "${LOCAL_TIMEZONE}" =~ ^[A-Za-z0-9._+-]+(/[A-Za-z0-9._+-]+)+$ ]]; then
+        sed -i "s|^GENERIC_TIMEZONE=.*$|GENERIC_TIMEZONE=${LOCAL_TIMEZONE}|" .env
+    fi
 
     # 重新加载刚解压出来的 .env 文件以获取密码
     load_env

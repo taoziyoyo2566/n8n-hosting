@@ -4,7 +4,7 @@ RUN apk update && apk fetch apk-tools-static
 RUN tar -xzf apk-tools-static-*.apk
 
 # --- 第二阶段：组装 Runner ---
-FROM n8nio/runners:2.2.6
+FROM n8nio/runners:2.36.8
 
 USER root
 
