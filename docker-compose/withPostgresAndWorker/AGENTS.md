@@ -19,16 +19,22 @@ holds only the facts and constraints of this directory on branch `taoziyoyo`.
   cloudflared tunnel.
 - Branches: `origin/main` follows upstream; `taoziyoyo` is upstream plus the
   files in this directory that upstream does not have, minus its sample
-  `.env`; `taoziyoyo-legacy` is the layout used before this one and serves as
-  its rollback; `security-workflow-prism` is NanoPi-R6S's.
+  `.env`; `security-workflow-prism` is NanoPi-R6S's. No older layout is kept
+  to roll back to.
+- Changes here go on a short-lived `<type>/<topic>` branch (a Conventional
+  Commits type such as `docs`, `fix`, or `chore`) started from `taoziyoyo` in
+  this checkout, where the ignored `.env` that `docker compose config` needs
+  lives; the branch reaches `taoziyoyo` by fast-forward only, a merge of an
+  official release included.
 - Run from this directory: `docker compose config` to check the merged
   result, `docker compose pull`, `docker compose up -d --remove-orphans`,
   `docker compose ps`; health at `http://127.0.0.1:5678/healthz`. The
   operator's runbook (Chinese): [OPERATIONS.md](OPERATIONS.md).
-- Updating to an official release: `git merge origin/main`, keep the sample
-  `.env` deleted after reading its diff for new variables, read the
+- Updating to an official release: back up the database and tag the current
+  commit first (`OPERATIONS.md`), then `git merge origin/main`, keep the
+  sample `.env` deleted after reading its diff for new variables, read the
   `docker-compose.yml` diff against the override, set `N8N_VERSION` in
-  `.env`, then pull and bring the stack up.
+  `.env`, then pull and bring the stack up. Recovery restores that backup.
 
 ## Constraints
 
@@ -45,3 +51,6 @@ holds only the facts and constraints of this directory on branch `taoziyoyo`.
   checkout, recreate the stack from the new path.
 - A fresh n8n has no owner until setup completes: keep it off public
   hostnames until then.
+- `origin` is a public fork of `n8n-io/n8n-hosting`: anything pushed there,
+  branch names included, is world readable. Check what a push would publish
+  about this host before proposing it.

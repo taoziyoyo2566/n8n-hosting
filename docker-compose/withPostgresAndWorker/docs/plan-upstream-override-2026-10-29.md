@@ -1,7 +1,8 @@
 # Upstream-based n8n deployment on taoziyoyo plan
 
-Status: APPROVED (2026-10-29) for the direction and the baseline commit; the
-cut-over needs its own approval with an action brief.
+Status: COMPLETE (2026-10-29). The operator approved the cut-over ("你来执行"),
+which ran and was verified that evening.
+Changelog: [changelog-upstream-override-2026-10-29.md](changelog-upstream-override-2026-10-29.md).
 
 ## Goal
 
@@ -83,3 +84,8 @@ diff against the override; set `N8N_VERSION` in `.env`; then
 
 - 2026-10-29, operator: "按照推荐的来". Adopt this structure, use the official
   runners image, and commit the running layout as a baseline first.
+- 2026-10-29, after the cut-over, operator: "旧的不需要保留，不需要的都可以删除" and
+  "都删掉，按你的建议处理". No rollback layout is kept: delete the
+  `taoziyoyo-legacy` branch locally and on `origin`, the legacy-only `.env`
+  names, the old images, and the old migration files. `origin` stays public;
+  the host documentation drops the SSH user name and the tunnel ID.
