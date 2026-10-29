@@ -1,0 +1,81 @@
+# Host customizations for taoziyoyo on top of the official docker-compose.yml.
+# Docker Compose loads this file automatically next to docker-compose.yml.
+# Keep the official files unchanged and express every local difference here;
+# use !override to replace a list instead of extending it.
+
+x-n8n-custom: &n8n_custom
+  user: "1000:1000"
+  security_opt:
+    - no-new-privileges:true
+  environment:
+    - NODE_ENV=production
+    - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
+    - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    - N8N_SECURE_COOKIE=true
+    - N8N_PROXY_HOPS=1
+    - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+    - N8N_DIAGNOSTICS_ENABLED=false
+    - N8N_WEBHOOK_URL=${WEBHOOK_URL}
+    - N8N_EMAIL_MODE=${N8N_EMAIL_MODE}
+    - N8N_SMTP_HOST=${N8N_SMTP_HOST}
+    - N8N_SMTP_PORT=${N8N_SMTP_PORT}
+    - N8N_SMTP_USER=${N8N_SMTP_USER}
+    - N8N_SMTP_PASS=${N8N_SMTP_PASS}
+    - N8N_SMTP_SSL=${N8N_SMTP_SSL}
+    - N8N_SMTP_SENDER=${N8N_SMTP_SENDER}
+  networks:
+    - backend
+    - ingress
+
+x-runner-custom: &runner_custom
+  security_opt:
+    - no-new-privileges:true
+  networks:
+    - backend
+    - ingress
+
+services:
+  postgres:
+    # db_storage holds a Postgres 17 cluster. Moving to another major version
+    # needs a dump and a restore into a fresh volume.
+    image: postgres:17
+    environment:
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    networks:
+      - backend
+
+  redis:
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --protected-mode
+      - "yes"
+    healthcheck:
+      test: !override ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+    networks:
+      - backend
+
+  n8n:
+    <<: *n8n_custom
+    # The official file publishes 5678 on every interface; public access goes
+    # through the host's cloudflared tunnel instead.
+    ports: !override
+      - 127.0.0.1:5678:5678
+
+  n8n-worker:
+    <<: *n8n_custom
+
+  n8n-runner:
+    <<: *runner_custom
+
+  n8n-worker-runner:
+    <<: *runner_custom
+
+# Same definitions as before the move to this layout: changing them makes
+# Compose recreate backend, which the invoice_automation app also joins.
+networks:
+  backend:
+    internal: true
+  ingress:
+    driver: bridge

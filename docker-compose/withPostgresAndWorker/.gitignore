@@ -1,0 +1,4 @@
+# Host values (passwords, encryption key); see .env.template
+.env
+# Migration archives hold .env and database dumps
+n8n_full_migration_*.tar.gz
