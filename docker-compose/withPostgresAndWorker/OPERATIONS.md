@@ -19,6 +19,7 @@
 - Postgres 固定在 17（和现有数据卷绑定）；
 - Redis 设置密码；
 - SMTP、对外网址、反向代理层数、时区、关闭诊断上报；
+- 执行记录保留 90 天（官方默认 14 天）；
 - 容器安全加固（`no-new-privileges`、以 1000 用户运行）；
 - `backend`（内部）和 `ingress` 两个网络。发票应用（invoice_automation 项目）通过
   `backend` 网络访问 `http://n8n:5678`。
@@ -119,8 +120,6 @@ docker exec -i withpostgresandworker-postgres-1 sh -c 'pg_restore -U "$POSTGRES_
 docker compose up -d --remove-orphans
 ```
 
-这条恢复命令在 2026-10-29 用当时的数据库在临时容器里演练过：在已有数据上恢复，结果和原库一致。
-
 **合并官方更新后出问题：** 回到合并前打的标签（`YYYY-MM-DD` 换成打标签的日期；会丢弃这次合并，
 先确认没有其他未提交的改动）：
 
@@ -134,8 +133,8 @@ cd docker-compose/withPostgresAndWorker && docker compose up -d --remove-orphans
 
 - Postgres 大版本和数据卷绑定：要升到官方的 18，必须先导出数据，用新的数据卷启动，再导入，
   不能直接改镜像版本。
-- 不要移动本目录。容器里记着这个目录的绝对路径，移动后要从新路径重建；2026-09-22 的
-  n8n 停机就是目录被移动导致的。
+- 不要移动本目录。容器里记着这个目录的绝对路径，移动后要从新路径重建，否则数据库容器
+  会起不来。
 - 全新安装的 n8n 在建好管理员之前，不要挂公网域名。
 - 这个仓库（GitHub 上的 fork）是**公开的**：推送前确认不含密码、密钥、webhook 路径，也尽量
   不写具体的主机信息（用户名、IP、tunnel ID）。

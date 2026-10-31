@@ -15,6 +15,8 @@ x-n8n-custom: &n8n_custom
     - N8N_PROXY_HOPS=1
     - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
     - N8N_DIAGNOSTICS_ENABLED=false
+    # Keep finished executions for 90 days instead of the default 14.
+    - EXECUTIONS_DATA_MAX_AGE=2160
     - N8N_WEBHOOK_URL=${WEBHOOK_URL}
     - N8N_EMAIL_MODE=${N8N_EMAIL_MODE}
     - N8N_SMTP_HOST=${N8N_SMTP_HOST}
